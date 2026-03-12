@@ -62,21 +62,116 @@ def aggregate_transactions(transactions_df: pd.DataFrame) -> pd.DataFrame:
     return agg_df
 
 
+def extract_advanced_features(
+    users_df: pd.DataFrame, transactions_df: pd.DataFrame
+) -> pd.DataFrame:
+    """Extracts complex features requiring both users and transactions data"""
+
+    print("Advanced features extraction...")
+
+    # 1. Time features
+    time_agg = (
+        transactions_df.groupby("id_user")
+        .agg(
+            first_trans_time=("timestamp_tr", "min"),
+            last_trans_time=("timestamp_tr", "max"),
+        )
+        .reset_index()
+    )
+
+    time_agg = time_agg.merge(
+        users_df[["id_user", "timestamp_reg"]], on="id_user", how="left"
+    )
+    time_agg["mins_to_first_trans"] = (
+        time_agg["first_trans_time"] - time_agg["timestamp_reg"]
+    ).dt.total_seconds() / 60.0
+    time_agg["activity_duration_mins"] = (
+        time_agg["last_trans_time"] - time_agg["first_trans_time"]
+    ).dt.total_seconds() / 60.0
+
+    # 2. Geo & Category features (based on the first transaction attempt)
+    first_trans = transactions_df.sort_values(
+        ["id_user", "timestamp_tr"]
+    ).drop_duplicates(subset=["id_user"], keep="first")
+
+    geo_features = first_trans[
+        ["id_user", "card_country", "payment_country", "card_type", "transaction_type"]
+    ].copy()
+    geo_features = geo_features.merge(
+        users_df[["id_user", "reg_country"]], on="id_user", how="left"
+    )
+
+    geo_features["match_reg_pay"] = (
+        geo_features["reg_country"] == geo_features["payment_country"]
+    ).astype(int)
+    geo_features["match_reg_card"] = (
+        geo_features["reg_country"] == geo_features["card_country"]
+    ).astype(int)
+    geo_features["match_pay_card"] = (
+        geo_features["payment_country"] == geo_features["card_country"]
+    ).astype(int)
+    geo_features["total_geo_mismatch"] = (
+        (geo_features["match_reg_pay"] == 0)
+        & (geo_features["match_reg_card"] == 0)
+        & (geo_features["match_pay_card"] == 0)
+    ).astype(int)
+
+    # 3. Combine advanced features
+    advanced_features = time_agg[
+        ["id_user", "mins_to_first_trans", "activity_duration_mins"]
+    ].merge(
+        geo_features[
+            [
+                "id_user",
+                "match_reg_pay",
+                "match_reg_card",
+                "match_pay_card",
+                "total_geo_mismatch",
+                "card_type",
+                "transaction_type",
+            ]
+        ],
+        on="id_user",
+        how="left",
+    )
+
+    return advanced_features
+
+
 def main():
     train_users, test_users, train_trans, test_trans = load_data()
 
     train_transactions_agg = aggregate_transactions(train_trans)
     test_transactions_agg = aggregate_transactions(test_trans)
 
+    train_adv = extract_advanced_features(train_users, train_trans)
+    test_adv = extract_advanced_features(test_users, test_trans)
+
     print("Tables merging...")
     # LEFT JOIN because we don't want to lose the users without transactions
-    train_full = train_users.merge(train_transactions_agg, on="id_user", how="left")
-    test_full = test_users.merge(test_transactions_agg, on="id_user", how="left")
+    train_full = train_users.merge(
+        train_transactions_agg, on="id_user", how="left"
+    ).merge(train_adv, on="id_user", how="left")
+    test_full = test_users.merge(test_transactions_agg, on="id_user", how="left").merge(
+        test_adv, on="id_user", how="left"
+    )
 
-    # Fill the gaps (NA) with 0 for those who didn't have transactions
-    cols_to_fill = train_transactions_agg.columns.drop("id_user")
-    train_full[cols_to_fill] = train_full[cols_to_fill].fillna(0)
-    test_full[cols_to_fill] = test_full[cols_to_fill].fillna(0)
+    # Fill NA properly: 0 for numerics, "unknown" for categoricals
+    numeric_cols = train_transactions_agg.columns.drop("id_user").tolist() + [
+        "mins_to_first_trans",
+        "activity_duration_mins",
+        "match_reg_pay",
+        "match_reg_card",
+        "match_pay_card",
+        "total_geo_mismatch",
+    ]
+
+    train_full[numeric_cols] = train_full[numeric_cols].fillna(0)
+    test_full[numeric_cols] = test_full[numeric_cols].fillna(0)
+
+    cat_cols = ["card_type", "transaction_type"]
+    train_full[cat_cols] = train_full[cat_cols].fillna("unknown")
+    test_full[cat_cols] = test_full[cat_cols].fillna("unknown")
 
     train_full.to_csv(DATA_PROCESSED_DIR / "train_full.csv", index=False)
     test_full.to_csv(DATA_PROCESSED_DIR / "test_full.csv", index=False)
