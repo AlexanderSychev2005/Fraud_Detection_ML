@@ -1,0 +1,23 @@
+[project]
+name = "fraud-detection-ml"
+version = "0.1.0"
+description = "Fraud detection system powered by Machine Learning"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "Alex", email = "alexandersychev2005@gmail.com" },
+    { name = "Yura", email = "Ecsport00@gmail.com"},
+    { name = "Kyrylo", email = "kyrylo.skorobogatko@gmail.com"}
+
+]
+
+dependencies = [
+    "pandas",
+    "numpy"
+    "jupyter"
+]
+
+[tool.uv]
+package = false
+
+
