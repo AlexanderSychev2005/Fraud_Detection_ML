@@ -96,7 +96,8 @@ def train_lightgbm() -> Tuple[lgb.Booster, pd.DataFrame]:
     skf = StratifiedKFold(
         n_splits=5, shuffle=True, random_state=42
     )  # Stratified ensures we'll have 3.78% fraudsters, the model learns on 4 parts and we test it on the 5th part measuring an error.
-    # The process repeats 5 times. The predictions on that parts are called Out-Of-Fold (OOF) predictions.
+    # The process repeats 5 times. The predictions on that parts are called Out-Of-Fold (OOF) predictions. During the process, each fold should be the valid one.
+    # At the end, we average the results between 5 models. This makes our solution incredibly resilient to emissions.
 
     oof_preds = np.zeros(len(X))
     test_preds = np.zeros(len(X_test))

@@ -489,6 +489,7 @@ dependencies = [
     { name = "pandas" },
     { name = "scikit-learn" },
     { name = "seaborn" },
+    { name = "snap" },
 ]
 
 [package.metadata]
@@ -500,6 +501,7 @@ requires-dist = [
     { name = "pandas" },
     { name = "scikit-learn" },
     { name = "seaborn" },
+    { name = "snap" },
 ]
 
 [[package]]
@@ -2004,6 +2006,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
 ]
+
+[[package]]
+name = "snap"
+version = "0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/a2/a86183692fe4b28be39bafc1c23bfc74705e2b7a6e0427506fb9fe338ce8/snap-0.5.tar.gz", hash = "sha256:393531130d7ac5633967718a19dd6c3b757291bc4c113ef697eeefaa8759d4cb", size = 24387, upload-time = "2006-12-06T12:11:02Z" }
 
 [[package]]
 name = "soupsieve"
