@@ -143,20 +143,26 @@ def train_lightgbm() -> Tuple[lgb.Booster, pd.DataFrame]:
     print(f"Precision: {precision_score(y, final_preds):.4f}")
     print(f"Recall: {recall_score(y, final_preds):.4f}")
 
-    print("\nGenerating submission file...")
-    submission = pd.DataFrame(
+    print("\nGenerating results file...")
+    results = pd.DataFrame(
         {
             "id_user": test_df["id_user"],
             "is_fraud": (test_preds >= best_thresh).astype(int),
         }
     )
 
-    submission_path = DATA_PROCESSED_DIR / "submission.csv"
-    submission.to_csv(submission_path, index=False)
-    print(f"File saved successfully to: {submission_path}")
+    results_path = DATA_PROCESSED_DIR / "results.csv"
+    results.to_csv(results_path, index=False)
+    print(f"File saved successfully to: {results_path}")
 
     return model, X
 
 
 if __name__ == "__main__":
-    final_model, X_train = train_lightgbm()
+    model, X_train = train_lightgbm()
+
+    print("Model saving...")
+    model_path = DATA_PROCESSED_DIR / "lgb_model.txt"
+    model.save_model(model_path)
+
+    print(f"Model is saved into: {model_path}")
