@@ -13,8 +13,12 @@ authors = [
 
 dependencies = [
     "pandas",
-    "numpy"
-    "jupyter"
+    "numpy",
+    "jupyter",
+    "matplotlib",
+    "seaborn",
+    "lightgbm",
+    "scikit-learn"
 ]
 
 [tool.uv]

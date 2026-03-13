@@ -69,9 +69,15 @@ def extract_advanced_features(
 
     print("Advanced features extraction...")
 
+    u_df = users_df.copy()
+    t_df = transactions_df.copy()
+
+    t_df["timestamp_tr"] = pd.to_datetime(t_df["timestamp_tr"], format="ISO8601")
+    u_df["timestamp_reg"] = pd.to_datetime(u_df["timestamp_reg"], format="ISO8601")
+
     # 1. Time features
     time_agg = (
-        transactions_df.groupby("id_user")
+        t_df.groupby("id_user")
         .agg(
             first_trans_time=("timestamp_tr", "min"),
             last_trans_time=("timestamp_tr", "max"),
@@ -80,11 +86,12 @@ def extract_advanced_features(
     )
 
     time_agg = time_agg.merge(
-        users_df[["id_user", "timestamp_reg"]], on="id_user", how="left"
+        u_df[["id_user", "timestamp_reg"]], on="id_user", how="left"
     )
     time_agg["mins_to_first_trans"] = (
         time_agg["first_trans_time"] - time_agg["timestamp_reg"]
     ).dt.total_seconds() / 60.0
+
     time_agg["activity_duration_mins"] = (
         time_agg["last_trans_time"] - time_agg["first_trans_time"]
     ).dt.total_seconds() / 60.0
