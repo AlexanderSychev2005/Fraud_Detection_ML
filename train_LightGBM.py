@@ -32,7 +32,9 @@ def prepare_data_for_lgb(df: pd.DataFrame) -> pd.DataFrame:
     ]
     for col in cat_cols:
         if col in df_model.columns:
-            df_model[col] = df_model[col].astype("category")
+            df_model[col] = df_model[col].astype(
+                "category"
+            )  # Pandas category type, LightGBM does not need one-hot encoding.
 
     return df_model
 
@@ -75,22 +77,26 @@ def train_lightgbm() -> Tuple[lgb.Booster, pd.DataFrame]:
 
     # Calculate class imbalance ratio to penalize missed frauds
     scale_pos_weight = (y == 0).sum() / (y == 1).sum()
+    print(f"Weight scale: {scale_pos_weight}")
 
-    # Настройки LightGBM
+    # LightGBM settings
     params = {
-        "objective": "binary",
-        "metric": "auc",
+        "objective": "binary",  # fraud or not fraud
+        "metric": "auc",  # ROC-AUC
         "boosting_type": "gbdt",
         "learning_rate": 0.05,
         "num_leaves": 31,
         "max_depth": 6,
-        "scale_pos_weight": scale_pos_weight,
+        "scale_pos_weight": scale_pos_weight,  #
         "random_state": 42,
         "verbose": -1,
     }
 
     print("Starting Stratified K-Fold Cross-Validation (5 folds)...")
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    skf = StratifiedKFold(
+        n_splits=5, shuffle=True, random_state=42
+    )  # Stratified ensures we'll have 3.78% fraudsters, the model learns on 4 parts and we test it on the 5th part measuring an error.
+    # The process repeats 5 times. The predictions on that parts are called Out-Of-Fold (OOF) predictions.
 
     oof_preds = np.zeros(len(X))
     test_preds = np.zeros(len(X_test))
@@ -104,7 +110,9 @@ def train_lightgbm() -> Tuple[lgb.Booster, pd.DataFrame]:
         val_data = lgb.Dataset(X_val_fold, label=y_val_fold, reference=train_data)
 
         # Setup Early Stopping callback
-        callbacks = [lgb.early_stopping(stopping_rounds=50, verbose=False)]
+        callbacks = [
+            lgb.early_stopping(stopping_rounds=50, verbose=False)
+        ]  # The model calculates AUC on the test fold after building each tree. If the metric does not improve during 50 steps, stop the training. Protects from overfitting.
 
         # Train the model
         model = lgb.train(
@@ -124,6 +132,7 @@ def train_lightgbm() -> Tuple[lgb.Booster, pd.DataFrame]:
         test_preds += model.predict(X_test) / skf.n_splits
         print(f"Fold {fold + 1} completed.")
 
+    # Basically, the model returns the probabilities (from 0.0 to 1.0). The default threshold equals to 0.5. However, we have to maximise the F1-score.
     print("\nOptimizing threshold for F1-score...")
     best_thresh, best_f1 = find_best_threshold(y, oof_preds)
 
